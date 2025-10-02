@@ -29,9 +29,10 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php else: ?>
     <div class="card">
         <div class="card-body">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 5%;">Foto</th>
                         <th>Nome</th>
                         <th>Telefone</th>
                         <th>Email</th>
@@ -41,6 +42,15 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <tbody>
                     <?php foreach ($clients as $client): ?>
                         <tr>
+                            <td>
+                                <?php if (!empty($client['photo_path'])): ?>
+                                    <img src="<?php echo htmlspecialchars($client['photo_path']); ?>" alt="Foto de <?php echo htmlspecialchars($client['name']); ?>" class="img-thumbnail rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                <?php else: ?>
+                                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-person-fill" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo htmlspecialchars($client['name']); ?></td>
                             <td><?php echo htmlspecialchars($client['phone']); ?></td>
                             <td><?php echo htmlspecialchars($client['email']); ?></td>

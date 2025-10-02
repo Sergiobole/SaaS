@@ -34,9 +34,10 @@ $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
     <div class="card">
         <div class="card-body">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 5%;">Foto</th>
                         <th>Nome</th>
                         <th>Descrição</th>
                         <th>Preço</th>
@@ -48,6 +49,18 @@ $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php foreach ($services as $service):
                     ?>
                         <tr>
+                            <td>
+                                <?php if (!empty($service['photo_path'])):
+                                ?>
+                                    <img src="<?php echo htmlspecialchars($service['photo_path']); ?>" alt="Foto de <?php echo htmlspecialchars($service['name']); ?>" class="img-thumbnail" style="width: 80px; height: 60px; object-fit: cover;">
+                                <?php else:
+                                ?>
+                                    <div class="bg-secondary d-flex align-items-center justify-content-center text-white img-thumbnail" style="width: 80px; height: 60px;">
+                                        <i class="bi bi-image" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                <?php endif;
+                                ?>
+                            </td>
                             <td><?php echo htmlspecialchars($service['name']); ?></td>
                             <td><?php echo htmlspecialchars($service['description']); ?></td>
                             <td>R$ <?php echo htmlspecialchars(number_format($service['price'], 2, ',', '.')); ?></td>

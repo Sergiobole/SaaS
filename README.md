@@ -2,7 +2,7 @@
 Sistemas Criados para SaaS's
 
 
-## Ideias para sistemas SaaS's para ficar rido !!! 
+## Ideias para sistemas SaaS's para ficar rico !!! 
 
 Com certeza! O desenvolvimento de software é uma área fantástica e cheia de oportunidades.
 
@@ -16,6 +16,7 @@ Aqui estão algumas áreas e focos promissores para uma startup de desenvolvimen
 * **Foco:** Crie softwares para automatizar tarefas repetitivas em um setor muito específico que ainda usa processos manuais ou planilhas.
 * **Exemplos:**
     * **Gestão de Estoque para Pequenos Produtores Artesanais:** Um sistema que rastreia ingredientes, calcula custos de produção e gerencia pedidos para quem faz sabonetes, velas, doces gourmet, etc.
+    
     * **Agenda e Cadastro para Serviços de Estética e Pets:** Um CRM simplificado para autônomos (cabeleireiros, *pet groomers*), focado em agendamento recorrente e histórico de clientes/serviços.
 
 ### 2. **Ferramentas para Produtividade de Desenvolvedores (*DevTools*)**

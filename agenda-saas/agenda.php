@@ -13,8 +13,8 @@ $stmt_clients = $pdo->prepare("SELECT id, name FROM clientes WHERE user_id = ? O
 $stmt_clients->execute([$user_id]);
 $clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
 
-// Serviços
-$stmt_services = $pdo->prepare("SELECT id, name, duration FROM services WHERE user_id = ? ORDER BY name");
+// Serviços (agora buscando preço também)
+$stmt_services = $pdo->prepare("SELECT id, name, duration, price FROM services WHERE user_id = ? ORDER BY name");
 $stmt_services->execute([$user_id]);
 $services = $stmt_services->fetchAll(PDO::FETCH_ASSOC);
 
@@ -24,6 +24,10 @@ $services = $stmt_services->fetchAll(PDO::FETCH_ASSOC);
     /* Ajustes para o FullCalendar */
     .fc-event {
         cursor: pointer;
+    }
+    /* Melhora a aparência do select multiple */
+    #serviceIds {
+        height: 150px;
     }
 </style>
 
@@ -54,15 +58,23 @@ $services = $stmt_services->fetchAll(PDO::FETCH_ASSOC);
                     </div>
 
                     <div class="mb-3">
-                        <label for="serviceId" class="form-label">Serviço</label>
-                        <select class="form-select" id="serviceId" name="service_id" required>
-                            <option value="">Selecione um serviço...</option>
+                        <label for="serviceIds" class="form-label">Serviços</label>
+                        <select class="form-select" id="serviceIds" name="service_ids[]" multiple required>
                             <?php foreach ($services as $service): ?>
-                                <option value="<?php echo $service['id']; ?>" data-duration="<?php echo $service['duration']; ?>">
-                                    <?php echo htmlspecialchars($service['name']); ?>
+                                <option value="<?php echo $service['id']; ?>" data-duration="<?php echo $service['duration']; ?>" data-price="<?php echo $service['price']; ?>">
+                                    <?php echo htmlspecialchars($service['name']); ?> (<?php echo $service['duration']; ?> min) - R$ <?php echo number_format($service['price'], 2, ',', '.'); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <strong>Tempo Total:</strong> <span id="totalDuration">0</span> minutos
+                        </div>
+                        <div class="col-6">
+                            <strong>Valor Total:</strong> R$ <span id="totalPrice">0,00</span>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -105,6 +117,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveBtn = document.getElementById('saveAppointmentBtn');
     const deleteBtn = document.getElementById('deleteAppointmentBtn');
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const servicesSelect = document.getElementById('serviceIds');
+    const totalDurationEl = document.getElementById('totalDuration');
+    const totalPriceEl = document.getElementById('totalPrice');
+
+    // Função para calcular totais
+    function calculateTotals() {
+        let totalDuration = 0;
+        let totalPrice = 0;
+        const selectedOptions = Array.from(servicesSelect.selectedOptions);
+
+        selectedOptions.forEach(option => {
+            totalDuration += parseInt(option.dataset.duration || 0);
+            totalPrice += parseFloat(option.dataset.price || 0);
+        });
+
+        totalDurationEl.textContent = totalDuration;
+        totalPriceEl.textContent = totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    servicesSelect.addEventListener('change', calculateTotals);
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
@@ -124,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         dateClick: function(info) {
             appointmentForm.reset();
+            calculateTotals(); // Reseta os totais
             document.getElementById('appointmentId').value = '';
             document.getElementById('appointmentModalLabel').textContent = 'Novo Agendamento';
             deleteBtn.style.display = 'none';
@@ -136,7 +169,10 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         eventClick: function(info) {
+            // NOTA: A edição de agendamentos com múltiplos serviços precisará de mais trabalho.
+            // Por enquanto, a edição pode não funcionar como esperado.
             appointmentForm.reset();
+            calculateTotals();
             const event = info.event;
             const props = event.extendedProps;
 
@@ -145,7 +181,8 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteBtn.style.display = 'block';
 
             document.getElementById('clientId').value = props.client_id;
-            document.getElementById('serviceId').value = props.service_id;
+            // A seleção de múltiplos serviços na edição precisará ser implementada.
+            // document.getElementById('serviceIds').value = props.service_id;
             document.getElementById('notes').value = props.notes;
 
             const startDate = new Date(event.startStr);
@@ -188,7 +225,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Lógica para Salvar (Criar ou Editar)
     saveBtn.addEventListener('click', function() {
         const formData = new FormData(appointmentForm);
-        const data = Object.fromEntries(formData.entries());
+        // Importante: FormData não lida bem com `select-multiple` para JSON.
+        // Precisamos construir o objeto de dados manualmente.
+        const data = {
+            id: formData.get('id'),
+            csrf_token: formData.get('csrf_token'),
+            client_id: formData.get('client_id'),
+            start_date: formData.get('start_date'),
+            start_time: formData.get('start_time'),
+            notes: formData.get('notes'),
+            service_ids: Array.from(servicesSelect.selectedOptions).map(opt => opt.value)
+        };
+
         const url = data.id ? 'handle_edit_appointment.php' : 'handle_add_appointment.php';
 
         fetch(url, {
