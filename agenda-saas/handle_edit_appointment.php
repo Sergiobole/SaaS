@@ -21,6 +21,7 @@ try {
     }
 
     $pdo = getDbConnection();
+    $pdo->beginTransaction();
 
     // Se for apenas uma atualização de data/hora (drag-and-drop)
     if (isset($input['start_datetime'])) {
@@ -39,46 +40,80 @@ try {
 
     } else { // Edição completa do formulário
         $client_id = $input['client_id'] ?? null;
-        $service_id = $input['service_id'] ?? null;
+        $service_ids = $input['service_ids'] ?? [];
         $start_date = $input['start_date'] ?? null;
         $start_time = $input['start_time'] ?? null;
         $notes = $input['notes'] ?? '';
 
-        if (!$client_id || !$service_id || !$start_date || !$start_time) {
+        if (!$client_id || empty($service_ids) || !$start_date || !$start_time) {
             throw new Exception('Todos os campos são obrigatórios.');
         }
 
-        $stmt_duration = $pdo->prepare("SELECT duration FROM services WHERE id = ? AND user_id = ?");
-        $stmt_duration->execute([$service_id, $user_id]);
-        $service = $stmt_duration->fetch(PDO::FETCH_ASSOC);
+        // Get services details (duration and price)
+        $services_data = [];
+        $total_duration = 0;
+        if (!empty($service_ids)) {
+            $placeholders = implode(',', array_fill(0, count($service_ids), '?'));
+            $stmt_services = $pdo->prepare("SELECT id, duration, price FROM services WHERE id IN ($placeholders) AND user_id = ?");
+            
+            $params = $service_ids;
+            $params[] = $user_id;
+            $stmt_services->execute($params);
+            
+            $services_data = $stmt_services->fetchAll(PDO::FETCH_ASSOC);
 
-        if (!$service) {
-            throw new Exception('Serviço inválido.');
+            if (count($services_data) !== count($service_ids)) {
+                $pdo->rollBack();
+                throw new Exception('Um ou mais serviços são inválidos ou não pertencem a você.');
+            }
+
+            foreach ($services_data as $service) {
+                $total_duration += $service['duration'];
+            }
         }
 
-        $duration_minutes = $service['duration'];
+        if ($total_duration <= 0) {
+            throw new Exception('A duração total dos serviços deve ser maior que zero.');
+        }
+
         $start_datetime_str = $start_date . ' ' . $start_time;
         $start_datetime = new DateTime($start_datetime_str);
         $end_datetime = clone $start_datetime;
-        $end_datetime->add(new DateInterval('PT' . $duration_minutes . 'M'));
+        $end_datetime->add(new DateInterval('PT' . $total_duration . 'M'));
 
+        // Update the main appointment
         $stmt = $pdo->prepare(
-            'UPDATE appointments SET client_id = ?, service_id = ?, start_datetime = ?, end_datetime = ?, notes = ? WHERE id = ? AND user_id = ?'
+            'UPDATE appointments SET client_id = ?, start_datetime = ?, end_datetime = ?, notes = ? WHERE id = ? AND user_id = ?'
         );
         $stmt->execute([
             $client_id,
-            $service_id,
             $start_datetime->format('Y-m-d H:i:s'),
             $end_datetime->format('Y-m-d H:i:s'),
             $notes,
             $id,
             $user_id
         ]);
+
+        // Remove old service associations
+        $stmt_delete = $pdo->prepare('DELETE FROM appointment_services WHERE appointment_id = ?');
+        $stmt_delete->execute([$id]);
+
+        // Add new service associations with price
+        $stmt_pivot = $pdo->prepare(
+            'INSERT INTO appointment_services (appointment_id, service_id, price) VALUES (?, ?, ?)'
+        );
+        foreach ($services_data as $service) {
+            $stmt_pivot->execute([$id, $service['id'], $service['price']]);
+        }
     }
 
+    $pdo->commit();
     echo json_encode(['status' => 'success', 'message' => 'Agendamento atualizado com sucesso!']);
 
 } catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

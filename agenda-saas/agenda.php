@@ -66,11 +66,12 @@ $services = $stmt_services->fetchAll(PDO::FETCH_ASSOC);
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="form-text text-muted">Segure Ctrl (ou Cmd em Mac) para selecionar múltiplos serviços.</small>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-6">
-                            <strong>Tempo Total:</strong> <span id="totalDuration">0</span> minutos
+                            <strong>Tempo Total:</strong> <span id="totalDuration">0 min</span>
                         </div>
                         <div class="col-6">
                             <strong>Valor Total:</strong> R$ <span id="totalPrice">0,00</span>
@@ -93,9 +94,15 @@ $services = $stmt_services->fetchAll(PDO::FETCH_ASSOC);
                         <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Status do Pagamento</label>
+                        <p id="paymentStatus" class="form-control-static"></p>
+                    </div>
+
                 </form>
             </div>
             <div class="modal-footer">
+                <button type="button" id="confirmPaymentBtn" class="btn btn-success" style="display: none;">Confirmar Pagamento</button>
                 <button type="button" id="deleteAppointmentBtn" class="btn btn-danger me-auto" style="display: none;">Excluir</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" id="saveAppointmentBtn" class="btn btn-primary">Salvar</button>
@@ -132,21 +139,34 @@ document.addEventListener('DOMContentLoaded', function() {
             totalPrice += parseFloat(option.dataset.price || 0);
         });
 
-        totalDurationEl.textContent = totalDuration;
+        if (totalDuration >= 60) {
+            const hours = Math.floor(totalDuration / 60);
+            const minutes = totalDuration % 60;
+            let durationString = `${hours}h`;
+            if (minutes > 0) {
+                durationString += ` ${minutes}min`;
+            }
+            totalDurationEl.textContent = durationString;
+        } else {
+            totalDurationEl.textContent = `${totalDuration} min`;
+        }
+        
         totalPriceEl.textContent = totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     servicesSelect.addEventListener('change', calculateTotals);
 
+    const isMobile = window.innerWidth < 768;
+
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
+        initialView: isMobile ? 'listWeek' : 'timeGridWeek',
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: isMobile ? 'listWeek,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
         },
         locale: 'pt-br',
-        buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
+        buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia', list: 'Lista' },
         allDaySlot: false,
         slotMinTime: '08:00:00',
         slotMaxTime: '20:00:00',
@@ -169,10 +189,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         eventClick: function(info) {
-            // NOTA: A edição de agendamentos com múltiplos serviços precisará de mais trabalho.
-            // Por enquanto, a edição pode não funcionar como esperado.
             appointmentForm.reset();
-            calculateTotals();
+            // calculateTotals() will be called after setting the services
             const event = info.event;
             const props = event.extendedProps;
 
@@ -181,13 +199,36 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteBtn.style.display = 'block';
 
             document.getElementById('clientId').value = props.client_id;
-            // A seleção de múltiplos serviços na edição precisará ser implementada.
-            // document.getElementById('serviceIds').value = props.service_id;
+            
+            // --- Start of new logic for multi-select ---
+            const serviceIdsToSelect = props.service_ids || [];
+            const servicesSelect = document.getElementById('serviceIds');
+
+            // Loop through all options and set selected status
+            Array.from(servicesSelect.options).forEach(option => {
+                option.selected = serviceIdsToSelect.includes(option.value);
+            });
+            // --- End of new logic ---
+
+            // Manually trigger the calculation after setting the values
+            calculateTotals(); 
+
             document.getElementById('notes').value = props.notes;
 
             const startDate = new Date(event.startStr);
             document.getElementById('startDate').value = startDate.toISOString().slice(0, 10);
             document.getElementById('startTime').value = startDate.toTimeString().slice(0, 5);
+
+            // Payment Status
+            const paymentStatusEl = document.getElementById('paymentStatus');
+            const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+            if (props.status === 'paid') {
+                paymentStatusEl.innerHTML = '<span class="badge bg-success">Pago</span>';
+                confirmPaymentBtn.style.display = 'none';
+            } else {
+                paymentStatusEl.innerHTML = '<span class="badge bg-warning">Pendente</span>';
+                confirmPaymentBtn.style.display = 'block';
+            }
 
             appointmentModal.show();
         },
@@ -293,6 +334,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     Swal.fire({ icon: 'error', title: 'Oops...', text: 'Erro ao excluir: ' + error.message });
+                });
+            }
+        });
+    });
+
+    // Lógica para Confirmar Pagamento
+    const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+    confirmPaymentBtn.addEventListener('click', function() {
+        const appointmentId = document.getElementById('appointmentId').value;
+        if (!appointmentId) return;
+
+        Swal.fire({
+            title: 'Confirmar Pagamento?',
+            text: 'Isso marcará o agendamento como pago.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, confirmar!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const data = { id: appointmentId, csrf_token: csrfToken };
+                fetch('handle_confirm_payment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'success') {
+                        appointmentModal.hide();
+                        calendar.refetchEvents();
+                        Swal.fire({ icon: 'success', title: 'Sucesso!', text: result.message, timer: 2000, showConfirmButton: false });
+                    } else {
+                        throw new Error(result.message);
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({ icon: 'error', title: 'Oops...', text: 'Erro ao confirmar pagamento: ' + error.message });
                 });
             }
         });

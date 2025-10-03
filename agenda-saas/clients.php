@@ -10,8 +10,8 @@ $stmt->execute([$_SESSION['user_id']]);
 $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-people"></i> Meus Clientes</h2>
+<div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3">
+    <h2 class="mb-3 mb-md-0"><i class="bi bi-people"></i> Meus Clientes</h2>
     <a href="add_client.php" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Adicionar Novo Cliente</a>
 </div>
 
@@ -29,6 +29,7 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php else: ?>
     <div class="card">
         <div class="card-body">
+            <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
@@ -55,39 +56,44 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo htmlspecialchars($client['phone']); ?></td>
                             <td><?php echo htmlspecialchars($client['email']); ?></td>
                             <td class="text-end">
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#emailModal" 
-                                            data-client-email="<?php echo htmlspecialchars($client['email']); ?>" 
-                                            data-client-name="<?php echo htmlspecialchars($client['name']); ?>" 
-                                            title="Enviar Email">
-                                        <i class="bi bi-envelope"></i>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="actionsMenuButton_<?php echo $client['id']; ?>" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-gear"></i>
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-success" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#whatsappModal" 
-                                            data-client-phone="<?php echo htmlspecialchars($client['phone']); ?>" 
-                                            data-client-name="<?php echo htmlspecialchars($client['name']); ?>" 
-                                            title="Chamar no WhatsApp" <?php echo empty($client['phone']) ? 'disabled' : ''; ?> >
-                                        <i class="bi bi-whatsapp"></i>
-                                    </button>
-                                    <a href="edit_client.php?id=<?php echo $client['id']; ?>" class="btn btn-sm btn-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form action="delete_client.php" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.');">
-                                        <input type="hidden" name="id" value="<?php echo $client['id']; ?>">
-                                        <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsMenuButton_<?php echo $client['id']; ?>">
+                                        <li>
+                                            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#emailModal" data-client-email="<?php echo htmlspecialchars($client['email']); ?>" data-client-name="<?php echo htmlspecialchars($client['name']); ?>">
+                                                <i class="bi bi-envelope me-2"></i>Enviar Email
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#whatsappModal" data-client-phone="<?php echo htmlspecialchars($client['phone']); ?>" data-client-name="<?php echo htmlspecialchars($client['name']); ?>" <?php echo empty($client['phone']) ? 'disabled' : ''; ?>>
+                                                <i class="bi bi-whatsapp me-2"></i>WhatsApp
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="edit_client.php?id=<?php echo $client['id']; ?>">
+                                                <i class="bi bi-pencil me-2"></i>Editar
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form action="delete_client.php" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.');">
+                                                <input type="hidden" name="id" value="<?php echo $client['id']; ?>">
+                                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="bi bi-trash me-2"></i>Excluir
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
                                 </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 <?php endif; ?>

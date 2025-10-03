@@ -12,10 +12,10 @@ function generate_csrf_token() {
 
 function validate_csrf_token($token) {
     if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
-        die('Erro de validação de segurança (CSRF Token inválido). Ação bloqueada.');
+        throw new Exception('Erro de validação de segurança (CSRF Token inválido). Ação bloqueada.');
     }
     // Opcional: Regenera o token após o uso para segurança extra
-    unset($_SESSION['csrf_token']);
+    // unset($_SESSION['csrf_token']); // Removido para permitir múltiplas requisições AJAX na mesma página
     return true;
 }
 ?>

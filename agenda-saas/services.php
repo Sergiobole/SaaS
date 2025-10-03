@@ -10,8 +10,8 @@ $stmt->execute([$_SESSION['user_id']]);
 $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-card-checklist"></i> Meus Serviços</h2>
+<div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center mb-3">
+    <h2 class="mb-3 mb-md-0"><i class="bi bi-card-checklist"></i> Meus Serviços</h2>
     <a href="add_service.php" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Adicionar Novo Serviço</a>
 </div>
 
@@ -34,6 +34,7 @@ $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
     <div class="card">
         <div class="card-body">
+            <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
@@ -66,17 +67,27 @@ $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td>R$ <?php echo htmlspecialchars(number_format($service['price'], 2, ',', '.')); ?></td>
                             <td><?php echo htmlspecialchars($service['duration']); ?> min</td>
                             <td class="text-end">
-                                <div class="btn-group">
-                                    <a href="edit_service.php?id=<?php echo $service['id']; ?>" class="btn btn-sm btn-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form action="delete_service.php" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este serviço?');">
-                                        <input type="hidden" name="id" value="<?php echo $service['id']; ?>">
-                                        <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="actionsMenuButton_<?php echo $service['id']; ?>" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-gear"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsMenuButton_<?php echo $service['id']; ?>">
+                                        <li>
+                                            <a class="dropdown-item" href="edit_service.php?id=<?php echo $service['id']; ?>">
+                                                <i class="bi bi-pencil me-2"></i>Editar
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form action="delete_service.php" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este serviço?');">
+                                                <input type="hidden" name="id" value="<?php echo $service['id']; ?>">
+                                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="bi bi-trash me-2"></i>Excluir
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
                                 </div>
                             </td>
                         </tr>
@@ -84,6 +95,7 @@ $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     ?>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 <?php endif;
