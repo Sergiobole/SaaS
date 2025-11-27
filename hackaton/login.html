@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login — Hackaton</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--text:#e6eef6}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Arial;background:linear-gradient(135deg,#071029 0%, #0f1724 100%);color:var(--text);display:flex;min-height:100vh;align-items:center;justify-content:center}
+    .wrap{width:100%;max-width:980px;padding:24px}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:32px;align-items:center}
+    .brand{padding:28px;border-radius:12px;background:rgba(255,255,255,0.02);box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    .brand h1{margin:0 0 12px;font-size:28px}
+    .brand p{margin:0;color:rgba(230,238,246,0.75)}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:28px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    label{display:block;margin-bottom:12px;font-size:14px;color:rgba(230,238,246,0.85)}
+    input[type="email"],input[type="password"]{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);outline:none}
+    .actions{display:flex;gap:8px;align-items:center;margin-top:16px}
+    button{background:var(--accent);color:#022026;border:0;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:600}
+    a{color:var(--accent);text-decoration:none}
+    .muted{color:rgba(230,238,246,0.6);font-size:13px}
+    .error{color:#ff7b7b;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="grid">
+      <div class="brand">
+        <h1>Hackaton Dashboard</h1>
+        <p>Faça login para acessar seu painel. Use seu email e senha cadastrados.</p>
+        <hr style="margin:18px 0;border:none;border-top:1px dashed rgba(255,255,255,0.03)">
+        <p class="muted">Não tem conta? <a href="register.html">Crie uma aqui</a></p>
+      </div>
+
+      <div class="card" aria-live="polite">
+        <h2 style="margin:0 0 12px">Entrar</h2>
+        <div id="flash" class="error" style="display:none"></div>
+
+        <form id="loginForm">
+          <label>
+            Email
+            <input type="email" name="email" required autocomplete="username">
+          </label>
+          <label>
+            Senha
+            <input type="password" name="password" required autocomplete="current-password">
+          </label>
+
+          <div class="actions">
+            <button type="submit">Entrar</button>
+            <span class="muted">ou <a href="register.html">criar conta</a></span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const flash = document.getElementById('flash');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      flash.style.display = 'none';
+      const fd = new FormData(form);
+
+      try {
+        const resp = await fetch('./api/auth.php?action=login', {
+          method: 'POST',
+          body: fd,
+          credentials: 'include'
+        });
+        const json = await resp.json();
+        if (json.success) {
+          // confirmar sessão no servidor
+          const chk = await fetch('./api/auth.php?action=checkAuth', { credentials: 'include' });
+          const ok = await chk.json();
+          if (ok.success && ok.authenticated) {
+            window.location.href = 'index.html';
+            return;
+          }
+          showError('Erro ao validar sessão. Limpe cookies e tente novamente.');
+        } else {
+          showError(json.message || 'Erro ao autenticar');
+        }
+      } catch (err) {
+        showError('Erro de conexão');
+      }
+    });
+
+    function showError(msg){
+      flash.textContent = msg;
+      flash.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
